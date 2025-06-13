@@ -50,6 +50,11 @@ function Dashboard() {
     });
   }, []);
 
+  // if (accessLogs && accessLogs.length >= 2) {
+  //   accessLogs.splice(accessLogs.length - 2, 2);
+  //   console.log(accessLogs);
+  // }
+
   // Calculate today's granted access
   const getTodayGrantedAccess = () => {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
@@ -59,20 +64,29 @@ function Dashboard() {
     }).length;
   };
 
-  // Get the most recent granted access
-  const getLastGrantedAccess = () => {
+  // Get the most recent granted access based on the order of fetching (last added Firebase key)
+  const getLastGrantedAccessByOrder = () => {
     const grantedLogs = accessLogs.filter((log) => log.info === "Entrance");
-    if (grantedLogs.length === 0) return null;
 
-    // Sort by date and time (most recent first)
-    return grantedLogs.sort((a, b) => {
-      const dateA = new Date(`${a.date} ${a.time}`);
-      const dateB = new Date(`${b.date} ${b.time}`);
-      return dateB - dateA;
-    })[0];
+    if (grantedLogs.length === 0) {
+      return null;
+    }
+
+    // Sort by Firebase ID (which are typically chronological if push() is used)
+    // and then reverse to get the largest ID (most recent) at index 0.
+    const sortedById = [...grantedLogs].sort((a, b) =>
+      a.id.localeCompare(b.id)
+    );
+    // The largest ID will be at the end, so reverse to get it at the beginning
+    const reversedSortedLogs = sortedById.reverse();
+
+    return reversedSortedLogs[0];
   };
 
-  const lastGrantedAccess = getLastGrantedAccess();
+  const lastGrantedAccess = getLastGrantedAccessByOrder();
+
+  const testarr = [...accessLogs].reverse();
+  console.log(testarr[0]);
 
   return (
     <main className="p-8">
@@ -123,26 +137,25 @@ function Dashboard() {
               Recent Granted Access
             </h3>
             <div className="space-y-4">
-              {lastGrantedAccess ? (
+              {testarr && testarr ? (
                 <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center">
                     <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center mr-4">
                       <span className="text-white text-sm font-medium">
-                        {lastGrantedAccess.name
-                          ? lastGrantedAccess.name.charAt(0).toUpperCase()
+                        {testarr[0]?.name
+                          ? testarr[0]?.name.charAt(0).toUpperCase()
                           : "U"}
                       </span>
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">
-                        {lastGrantedAccess.name || "Unknown User"}
+                        {testarr[0]?.name || "Unknown User"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        accessed at {lastGrantedAccess.time} on{" "}
-                        {lastGrantedAccess.date}
+                        accessed at {testarr[0]?.time} on {testarr[0]?.date}
                       </p>
                       <p className="text-xs text-gray-400">
-                        Card: {lastGrantedAccess.card}
+                        Card: {testarr[0]?.card}
                       </p>
                     </div>
                   </div>
@@ -159,7 +172,12 @@ function Dashboard() {
                 </div>
               )}
 
-              {lastGrantedAccess &&
+              {/* This message implies that there might be more recent activity, but it's not being shown.
+                  If `lastGrantedAccess` is truly the *last* one added, then this message might be confusing
+                  if there are no other "more recent" items to show.
+                  Consider removing or rephrasing based on your UX goals.
+              */}
+              {testarr &&
                 accessLogs.filter((log) => log.info === "Entrance").length <=
                   1 && (
                   <div className="text-center py-8">

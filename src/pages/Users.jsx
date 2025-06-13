@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { User, Plus, MoreHorizontal, Trash2, Edit3, Users } from "lucide-react";
-import { ref, onValue, push, remove } from "firebase/database";
+import { ref, onValue, push, remove, update } from "firebase/database"; // Import 'update'
 
 import { database } from "../firebase";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
-
   const [fullName, setFullName] = useState("");
   const [cardId, setCardId] = useState("");
+  const [editingUserId, setEditingUserId] = useState(null); // State to track which user is being edited
+  const [editingUserName, setEditingUserName] = useState(""); // State to hold the name during editing
 
   const [showDropdown, setShowDropdown] = useState(null);
+
   useEffect(() => {
     const usersRef = ref(database, "users");
     onValue(usersRef, (snapshot) => {
@@ -21,6 +23,8 @@ export default function UsersPage() {
           ...user, // Spread user properties: name, cardId, etc.
         }));
         setUsers(loadedUsers);
+      } else {
+        setUsers([]); // Clear users if no data exists
       }
     });
   }, []);
@@ -56,77 +60,37 @@ export default function UsersPage() {
     }
   };
 
+  // Function to start editing a user
+  const handleEditClick = (user) => {
+    setEditingUserId(user.id);
+    setEditingUserName(user.name);
+  };
+
+  // Function to save the edited user name
+  const handleSaveEdit = async (userId) => {
+    if (!editingUserName.trim()) {
+      alert("User name cannot be empty.");
+      return;
+    }
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      await update(userRef, { name: editingUserName }); // Update only the 'name' field
+      setEditingUserId(null); // Exit editing mode
+      setEditingUserName(""); // Clear editing name state
+    } catch (error) {
+      console.error("Error updating user name:", error);
+    }
+  };
+
+  // Function to cancel editing
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setEditingUserName("");
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="my-4">
-          {/* Add New User Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    <Plus className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">
-                      Add New User
-                    </h2>
-                    <p className="text-blue-100 text-sm">
-                      Enter the details for the new user.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-6">
-                <div>
-                  <label
-                    htmlFor="fullName"
-                    className="block text-sm font-semibold text-slate-700 mb-2"
-                  >
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    id="fullName"
-                    name="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. John Doe"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl ..."
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="cardId"
-                    className="block text-sm font-semibold text-slate-700 mb-2"
-                  >
-                    Card ID / Number
-                  </label>
-                  <input
-                    type="text"
-                    id="cardId"
-                    name="cardId"
-                    value={cardId}
-                    onChange={(e) => setCardId(e.target.value)}
-                    placeholder="e.g. CARD123XYZ"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl ..."
-                  />
-                </div>
-
-                <button
-                  onClick={handleAddUser}
-                  className="w-full bg-gradient-to-r py-3 cursor-pointer text-white rounded-3xl from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-colors duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl"
-                >
-                  Add User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Registered Users Table */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 overflow-hidden">
@@ -185,20 +149,31 @@ export default function UsersPage() {
                           className="hover:bg-slate-50 transition-colors duration-150"
                         >
                           <td className="py-4 px-6">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                                <span className="text-white text-sm font-semibold">
-                                  {user.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")
-                                    .toUpperCase()}
+                            {editingUserId === user.id ? (
+                              <input
+                                type="text"
+                                value={editingUserName}
+                                onChange={(e) =>
+                                  setEditingUserName(e.target.value)
+                                }
+                                className="w-full px-2 py-1 border border-blue-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                              />
+                            ) : (
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-sm font-semibold">
+                                    {user.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")
+                                      .toUpperCase()}
+                                  </span>
+                                </div>
+                                <span className="font-medium text-slate-900">
+                                  {user.name}
                                 </span>
                               </div>
-                              <span className="font-medium text-slate-900">
-                                {user.name}
-                              </span>
-                            </div>
+                            )}
                           </td>
                           <td className="py-4 px-6">
                             <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-sm font-mono">
@@ -206,12 +181,37 @@ export default function UsersPage() {
                             </span>
                           </td>
                           <td className="py-4 px-6 text-center">
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="bg-red-400 px-4 py-1 text-white rounded-full cursor-pointer hover:bg-red-500 transition-colors duration-200"
-                            >
-                              Delete
-                            </button>
+                            {editingUserId === user.id ? (
+                              <>
+                                <button
+                                  onClick={() => handleSaveEdit(user.id)}
+                                  className="bg-green-500 px-4 py-1 text-white rounded-full cursor-pointer hover:bg-green-600 transition-colors duration-200 mr-2"
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="bg-slate-400 px-4 py-1 text-white rounded-full cursor-pointer hover:bg-slate-500 transition-colors duration-200"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleEditClick(user)}
+                                  className="bg-blue-400 px-4 py-1 text-white rounded-full cursor-pointer hover:bg-blue-500 transition-colors duration-200 mr-2"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  className="bg-red-400 px-4 py-1 text-white rounded-full cursor-pointer hover:bg-red-500 transition-colors duration-200"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
                           </td>
                         </tr>
                       ))}

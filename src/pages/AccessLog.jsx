@@ -25,7 +25,14 @@ export default function AccessLogComponent() {
           id, // Firebase key (e.g. "user1ID")
           ...control, // Spread user properties: name, cardId, etc.
         }));
-        setAccessLogs(loadedacceslogers);
+        // Sort the logs from newest to oldest based on the 'date' and 'time' fields
+        // Assuming 'date' is in a sortable format (e.g., YYYY-MM-DD) and 'time' (e.g., HH:MM:SS)
+        const sortedAccessLogs = loadedacceslogers.sort((a, b) => {
+          const dateTimeA = new Date(`${a.date}T${a.time}`);
+          const dateTimeB = new Date(`${b.date}T${b.time}`);
+          return dateTimeB - dateTimeA; // For descending order (newest first)
+        });
+        setAccessLogs(sortedAccessLogs);
       } else {
         setAccessLogs([]); // Set empty array if no data
       }
